@@ -1,0 +1,21 @@
+- name: SubCMD
+  target: subcmd
+  tree: |
+      if self is NonEmptyBytes:
+          if self in virsh.commands():
+              return PASS()
+          else:
+              return FAIL("unknown command: .*")
+
+- name: Options
+  target: options
+  assume: SubCMD is PASS
+  tree: |
+      if self is StringList:
+          if all(self in virsh.options(subcmd)):
+              if any(virsh.exclusive_options(subcmd) in self):
+                  return FAIL()
+              else:
+                  return PASS()
+          else:
+              return FAIL()
