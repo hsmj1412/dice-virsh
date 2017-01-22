@@ -1,21 +1,34 @@
 - name: SubCMD
-  target: subcmd
-  tree: |
-      if self is NonEmptyBytes:
-          if self in virsh.commands():
-              return PASS()
+  depends_on: subcmd
+  oracle: |
+      if subcmd is NonEmptyBytes:
+          if subcmd in virsh.commands():
+              return SUCCESS()
           else:
               return FAIL("unknown command: .*")
 
 - name: Options
-  target: options
-  assume: SubCMD is PASS
-  tree: |
-      if self is StringList:
-          if all(self in virsh.options(subcmd)):
-              if any(virsh.exclusive_options(subcmd) in self):
+  depends_on: options
+  require: SubCMD is SUCCESS
+  oracle: |
+      if options is StringList:
+          if all(options in virsh.options(subcmd)):
+              if any(virsh.exclusive_options(subcmd) in options):
                   return FAIL()
               else:
-                  return PASS()
+                  if all(virsh.required_options(subcmd) in options):
+                      return SUCCESS()
+                  else:
+                      return FAIL()
           else:
               return FAIL()
+
+- name: NstrType
+  depends_on: nstrtype
+  require: Options is SUCCESS
+  oracle: |
+      if nstrtype is String:
+          if nstrtype in virsh.nstring_type():
+              return SUCCESS()
+          else:
+              return FAIL("unknown arg: .*")

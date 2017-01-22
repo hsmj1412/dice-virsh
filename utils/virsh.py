@@ -333,3 +333,82 @@ def options(command):
 def exclusive_options(command):
     cmd = load_commands()[command]
     return cmd['exclusives']
+
+
+def required_options(command):
+    cmd = load_commands()[command]
+    req_options = []
+    for opt in cmd['options'].keys():
+        if cmd['options'][opt]['required'] is True:
+            req_options.append(opt)
+    return req_options
+
+
+#  args generate
+
+def nstring_type():
+    nstringlist = [u'aaa', u'bbb']
+    return list(nstringlist)
+
+'''
+def xml_type():
+    xmllist = ['aaa.xml', 'bbb.xml']
+    return xmllist
+'''
+
+
+
+
+
+def arg_type(command, option):
+    return "nstrtype"
+    cmd = load_commands()[command]
+    nstrlist = []   # normal string
+    nnumlist = []   # normal number
+    boollist = []   # bool
+    xmllist = []    # *.xml
+    savelist = []   # *.save
+    imglist = []    # *.img
+    dmlist = []     # domain name
+    timelist = []   # number of time
+    idlist = []     # normal string
+    coreslist = []  # cores number
+    bwlmtlist = []  # bandwidth limit
+    for opt in cmd['options'].keys():
+        if cmd['options'][opt]['type'] == 'string':
+            nstrlist += opt
+        # elif cmd['options'][opt]['type'] == 'number':
+            # nnumlist += opt
+        elif cmd['options'][opt]['type'] == 'bool':
+            boollist += opt
+        # if opt == 'xml':
+            # xmllist += opt
+        #  elif opt == 'file':
+        #      xmllist += opt
+
+    if option is None:
+        raise Exception('Error option')
+    elif option in boollist:
+        return None
+    elif option in timelist:
+        return 'timetype'
+    elif option in idlist:
+        return 'idtype'
+    elif option in coreslist:
+        return 'corenotype'
+    elif option in bwlmtlist:
+        return 'bwtype'
+    elif option in xmllist:
+        return 'xmltype'
+    elif option in savelist:
+        return 'savetype'
+    elif option in imglist:
+        return 'imgtype'
+    elif option in dmlist:
+        return 'dmtype'
+    elif option in nstrlist:
+        return 'nstrtype'
+    elif option in nnumlist:
+        return 'nnumtype'
+    else:
+        raise Exception('Unexpected option:' + option)
