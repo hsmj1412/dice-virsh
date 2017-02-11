@@ -23,12 +23,10 @@
           else:
               return FAIL()
 
-- name: NstrType
-  depends_on: nstrtype
+- name: Args
+  depends_on: args
   require: Options is SUCCESS
+  child: args
   oracle: |
-      if nstrtype is String:
-          if nstrtype in virsh.nstring_type():
-              return SUCCESS()
-          else:
-              return FAIL("unknown arg: .*")
+      build(buildscript.arg_build(subcmd, options))
+

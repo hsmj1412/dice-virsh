@@ -207,12 +207,9 @@ def option_from_line(line):
         option['required'] = True
 
     if name.startswith('<') and name.endswith('>'):
-        if name == '<string>':
-            # Special case for 'virsh echo'
-            name = ''
-            type_name = '<string>'
-        else:
-            name = name[1:-1]
+        name = name[1:-1]
+        type_name = '<string>'
+        option['argv'] = True
 
     if name.startswith('--'):
         name = name[2:]
@@ -235,7 +232,9 @@ def command_from_help(name):
         for line in opt_lines:
             opt_name, opt = option_from_line(line)
             if opt['type'] == 'string' and opt['required']:
-                if '[<%s>]' % opt_name in synopsis:
+                if '[<--%s>]' % opt_name in synopsis or\
+                   '[[--%s] <string>]' % opt_name in synopsis or\
+                   '[[--%s] <number>]' % opt_name in synopsis:
                     opt['required'] = False
             options[opt_name] = opt
             last_name = opt_name
@@ -346,8 +345,18 @@ def required_options(command):
 
 #  args generate
 
-def nstring_type():
+def nstring():
     nstringlist = [u'aaa', u'bbb']
+    return list(nstringlist)
+
+
+def stringlist():
+    nstringlist = [u'aaa', u'bbb']
+    return list(nstringlist)
+
+
+def nnumber():
+    nstringlist = [123, 456]
     return list(nstringlist)
 
 '''
@@ -357,39 +366,39 @@ def xml_type():
 '''
 
 
+def ttt():
+    f = open("/home/junli/ttt", "a")
+    print >>f, "test"
+    f.close()
 
 
-
-def arg_type(command, option):
-    return "nstrtype"
+def argtype(command, option):
     cmd = load_commands()[command]
+    strllist = []   # string list
     nstrlist = []   # normal string
     nnumlist = []   # normal number
     boollist = []   # bool
     xmllist = []    # *.xml
     savelist = []   # *.save
-    imglist = []    # *.img
     dmlist = []     # domain name
     timelist = []   # number of time
     idlist = []     # normal string
     coreslist = []  # cores number
     bwlmtlist = []  # bandwidth limit
     for opt in cmd['options'].keys():
-        if cmd['options'][opt]['type'] == 'string':
-            nstrlist += opt
-        # elif cmd['options'][opt]['type'] == 'number':
-            # nnumlist += opt
+        if cmd['options'][opt]['type'] == 'string' and cmd['options'][opt]['argv']:
+            strllist.append(str(opt))
+        elif cmd['options'][opt]['type'] == 'string':
+            nstrlist.append(str(opt))
+        elif cmd['options'][opt]['type'] == 'number':
+            nnumlist.append(str(opt))
         elif cmd['options'][opt]['type'] == 'bool':
-            boollist += opt
-        # if opt == 'xml':
-            # xmllist += opt
-        #  elif opt == 'file':
-        #      xmllist += opt
+            boollist.append(str(opt))
 
     if option is None:
         raise Exception('Error option')
     elif option in boollist:
-        return None
+        return 'bool'
     elif option in timelist:
         return 'timetype'
     elif option in idlist:
@@ -402,13 +411,13 @@ def arg_type(command, option):
         return 'xmltype'
     elif option in savelist:
         return 'savetype'
-    elif option in imglist:
-        return 'imgtype'
     elif option in dmlist:
         return 'dmtype'
     elif option in nstrlist:
-        return 'nstrtype'
+        return 'nstring'
     elif option in nnumlist:
-        return 'nnumtype'
+        return 'nnumber'
+    elif option in strllist:
+        return 'stringlist'
     else:
-        raise Exception('Unexpected option:' + option)
+        raise Exception('Unexpected cmd:' + command + ' Unexpected option:' + option)

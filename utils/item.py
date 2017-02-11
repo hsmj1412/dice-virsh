@@ -13,7 +13,10 @@ class Item(item.ItemBase):
         if options is not None:
             for opt in options:
                 cmdline += ' --%s' % utils.escape(str(opt))
-                arg = self.get('nstrtype')
+                opt = str(opt) + '_arg'
+                opt = opt.replace('-', '_')
+                arg = self.get(opt)
+
                 if arg is None:
                     arg = ''
                 arg = utils.escape(str(arg))
