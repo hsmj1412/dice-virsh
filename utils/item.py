@@ -1,6 +1,5 @@
 from dice.core import item
 from dice import utils
-# from . import virsh
 
 
 class Item(item.ItemBase):

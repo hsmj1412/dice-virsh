@@ -359,18 +359,6 @@ def nnumber():
     nstringlist = [123, 456]
     return list(nstringlist)
 
-'''
-def xml_type():
-    xmllist = ['aaa.xml', 'bbb.xml']
-    return xmllist
-'''
-
-
-def ttt():
-    f = open("/home/junli/ttt", "a")
-    print >>f, "test"
-    f.close()
-
 
 def argtype(command, option):
     cmd = load_commands()[command]
