@@ -1,10 +1,6 @@
 import sys
 import os
-
-
-def test(sub, opt):
-    mod = sys.modules['dice-virsh_utils.virsh']
-    mod.ttt()
+import re
 
 
 def dir_prove():
@@ -15,37 +11,65 @@ def dir_prove():
     return wd
 
 
-def arg_generate(fp, sub, opt):
+def arg_generate(fp, sub, opts):
     virsh_mod = sys.modules['dice-virsh_utils.virsh']
-    argtype = virsh_mod.argtype(sub, opt)
-    opt = str(opt) + '_arg'
-    opt = opt.replace('-', '_')
+    temp = None
+    poolarg = None
+    for opt in opts:
+        if re.match('string_volname', virsh_mod.argtype(sub, opt)):
+            temp = opt
+            opts.remove(opt)
+            break
+    for opt in opts:
+        argtype = virsh_mod.argtype(sub, opt)
+        opt = str(opt) + '_arg'
+        opt = opt.replace('-', '_')
 
-    fp.write('- name: ' + opt + '\n')
-    fp.write('  depends_on: ' + opt + '\n')
-    fp.write('  oracle: |' + '\n')
+        fp.write('- name: ' + opt + '\n')
+        fp.write('  depends_on: ' + opt + '\n')
+        fp.write('  oracle: |' + '\n')
 
-    if argtype == 'bool':
-        fp.write('      return SUCCESS()' + '\n')
-    elif argtype == 'nnumber' or argtype == 'time':
-        fp.write('      if ' + opt + ' is Integer:' + '\n')
-        fp.write('          if ' + opt + ' in virsh.' + argtype + '():' + '\n')
+        if re.match('bool', argtype):
+            fp.write('      return SUCCESS()' + '\n')
+        elif re.match('number', argtype):
+            fp.write('      if ' + opt + ' is Integer:' + '\n')
+            fp.write('          if ' + opt + ' in virsh.' + argtype + '():' +
+                     '\n')
+            fp.write('              return SUCCESS()' + '\n')
+            fp.write('          else:' + '\n')
+            fp.write('              return FAIL()' + '\n')
+        elif re.match('string', argtype):
+            if re.search('poolname', argtype) and temp:
+                poolarg = opt
+            fp.write('      if ' + opt + ' is String:' + '\n')
+            fp.write('          if ' + opt + ' in virsh.' + argtype + '():' +
+                     '\n')
+            fp.write('              return SUCCESS()' + '\n')
+            fp.write('          else:' + '\n')
+            fp.write('              return FAIL()' + '\n')
+        elif re.match('list', argtype):
+            fp.write('      if ' + opt + ' is StringList:' + '\n')
+            fp.write('          if all(' + opt + ' in virsh.' + argtype +
+                     '()):' + '\n')
+            fp.write('              return SUCCESS()' + '\n')
+            fp.write('          else:' + '\n')
+            fp.write('              return FAIL()' + '\n')
+        fp.write('\n')
+    if temp:
+        argtype = virsh_mod.argtype(sub, temp)
+        temp = str(temp) + '_arg'
+        temp = temp.replace('-', '_')
+
+        fp.write('- name: ' + temp + '\n')
+        fp.write('  depends_on: ' + temp + '\n')
+        fp.write('  oracle: |' + '\n')
+
+        fp.write('      if ' + temp + ' is String:' + '\n')
+        fp.write('          if ' + temp + ' in virsh.' + argtype + '(' + poolarg
+                 + '):' + '\n')
         fp.write('              return SUCCESS()' + '\n')
         fp.write('          else:' + '\n')
         fp.write('              return FAIL()' + '\n')
-    elif argtype == 'nstring':
-        fp.write('      if ' + opt + ' is String:' + '\n')
-        fp.write('          if ' + opt + ' in virsh.' + argtype + '():' + '\n')
-        fp.write('              return SUCCESS()' + '\n')
-        fp.write('          else:' + '\n')
-        fp.write('              return FAIL()' + '\n')
-    elif argtype == 'stringlist':
-        fp.write('      if ' + opt + ' is StringList:' + '\n')
-        fp.write('          if all(' + opt + ' in virsh.' + argtype + '()):' + '\n')
-        fp.write('              return SUCCESS()' + '\n')
-        fp.write('          else:' + '\n')
-        fp.write('              return FAIL()' + '\n')
-    fp.write('\n')
 
 
 def arg_build(sub, opts):
@@ -53,8 +77,7 @@ def arg_build(sub, opts):
         return
     wd = os.path.join(dir_prove(), 'args.yaml')
     with open(wd, 'a') as fp:
-        for opt in opts:
-            arg_generate(fp, sub, opt)
+        arg_generate(fp, sub, opts)
 
 
 

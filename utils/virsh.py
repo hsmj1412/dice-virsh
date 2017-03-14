@@ -6,7 +6,6 @@ import subprocess
 
 from dice.utils import data_dir
 
-
 EXCLUSIVE_OPTIONS = {
     'allocpages': [
         ('all', 'cellno'),
@@ -104,6 +103,12 @@ EXCLUSIVE_OPTIONS = {
         ('current', 'config'),
         ('current', 'live'),
     ],
+    'freecell': [
+        ('all', 'cellno'),
+    ],
+    'freepages': [
+        ('all', 'cellno'),
+    ],
     'iothreadinfo': [
         ('current', 'config'),
         ('current', 'live'),
@@ -112,11 +117,9 @@ EXCLUSIVE_OPTIONS = {
         ('current', 'config'),
         ('current', 'live'),
     ],
-    'freecell': [
-        ('all', 'cellno'),
-    ],
-    'freepages': [
-        ('all', 'cellno'),
+    'list': [
+        ('table', 'name'),
+        ('table', 'uuid'),
     ],
     'metadata': [
         ('edit', 'set'),
@@ -128,6 +131,11 @@ EXCLUSIVE_OPTIONS = {
     'memtune': [
         ('current', 'config'),
         ('current', 'live'),
+    ],
+    'net-list': [
+        ('name', 'table'),
+        ('name', 'uuid'),
+        ('uuid', 'table'),
     ],
     'numatune': [
         ('current', 'config'),
@@ -197,6 +205,29 @@ EXCLUSIVE_OPTIONS = {
     ],
 }
 
+DOMAIN_RUNNING = [
+    'shutoff', 'suspend', 'set-user-password', 'domtime'
+]
+
+DOMAIN_PAUSED = [
+    'resume',
+]
+
+DOMAIN_SHUTOFF = [
+    'start', 'domrename', 'setmaxmem', 'setmem', 'setvcpus'
+]
+
+DOMAIN_RoP = [
+    'destroy', 'cpu-stats', 'domdisplay' 'domjobinfo', 'send-key',
+    'qemu-monitor-command', 'qemu-monitor-event', 'qemu-agent-command',
+    'reboot', 'reset', 'save', 'screenshot', 'vncdisplay', 'domblkerror',
+    'domblkstat', 'domcontrol', 'dommemstat',
+]
+
+POOL_INA = [
+    'pool-delete', 'pool-build', 'pool-undefine'
+]
+
 
 def option_from_line(line):
     option = {'required': False, 'argv': False}
@@ -214,13 +245,71 @@ def option_from_line(line):
     if name.startswith('--'):
         name = name[2:]
 
+    f = open("/home/junli/test2", "a")
+    fp = open("/home/junli/test3", "a")
+    print >> f, line
     if type_name == '<string>':
-        type_name = 'string'
+        if re.search('domain name', line) or re.search('list of domain', line):
+            print >> f, "domain_name"
+            type_name = 'string_domname'
+        elif re.search('domain', line) and re.search('uuid', line):
+            print >> f, "domain_uuid"
+            type_name = 'string_nstring'
+        elif re.search('pool name', line):
+            print >> f, "pool_name"
+            type_name = 'string_nstring'
+        elif re.search('volume name', line) or re.search('vol name', line):
+            print >> f, "volume_name"
+            type_name = 'string_nstring'
+        elif re.search('network', line) and re.search('name', line):
+            print >> f, 'network_name'
+            type_name = 'string_nstring'
+        elif re.search('network', line) and re.search('uuid', line):
+            print >> f, 'network_uuid'
+            type_name = 'string_nstring'
+        elif re.search('save', line):
+            print >> f, ".save"
+            type_name = 'string_nstring'
+        elif re.search('xml', line) or re.search('XML', line):
+            print >> f, "XML"
+            type_name = 'string_nstring'
+        elif re.search('command', line):
+            print >> f, "command"
+            type_name = 'string_nstring'
+        elif re.search('interface', line):
+            print >> f, "interface"
+            type_name = 'string_nstring'
+        elif re.search('virttype', line):
+            print >> f, "virttype"
+            type_name = 'string_nstring'
+        elif re.search('machine type', line):
+            print >> f, "machinetype"
+            type_name = 'string_nstring'
+        elif re.search('arch', line):
+            print >> f, "arch"
+            type_name = 'string_nstring'
+        elif re.search('emulator', line):
+            print >> f, 'emulator'
+            type_name = 'string_nstring'
+        elif re.search('new name', line) or re.search('clone name', line):
+            print >> f, 'name'
+            type_name = 'string_nstring'
+        elif re.search('secret UUID', line):
+            print >> f, 'sec_uuid'
+            type_name = 'string_nstring'
+        elif re.search('MAC', line):
+            print >> f, 'mac'
+            type_name = 'string_nstring'
+        else:
+            type_name = 'string_nstring'
+            print >> fp, line
     elif type_name == '<number>':
-        type_name = 'number'
+        type_name = 'number_nnumber'
     else:
         type_name = 'bool'
     option['type'] = type_name
+    f.close()
+    fp.close()
 
     return name, option
 
@@ -231,11 +320,15 @@ def command_from_help(name):
         last_name = ''
         for line in opt_lines:
             opt_name, opt = option_from_line(line)
-            if opt['type'] == 'string' and opt['required']:
-                if '[<--%s>]' % opt_name in synopsis or\
-                   '[[--%s] <string>]' % opt_name in synopsis or\
-                   '[[--%s] <number>]' % opt_name in synopsis:
+            if re.match('string', opt['type']) and opt['required']:
+                if ('[<--%s>]' % opt_name in synopsis) or \
+                        ('[[--%s] <string>]' % opt_name in synopsis) or \
+                        ('[[--%s] <number>]' % opt_name in synopsis):
                     opt['required'] = False
+            if re.search('domname', opt['type']):
+                f = open('/home/junli/haha', 'a')
+                print >>f, name
+                f.close()
             options[opt_name] = opt
             last_name = opt_name
 
@@ -345,67 +438,154 @@ def required_options(command):
 
 #  args generate
 
-def nstring():
-    nstringlist = [u'aaa', u'bbb']
+def string_nstring():
+    nstringlist = [u'RHEL-7.2a.xml', u'RHEL-7.2b.xml', u'RHEL-7.2c.xml']
     return list(nstringlist)
 
 
-def stringlist():
-    nstringlist = [u'aaa', u'bbb']
-    return list(nstringlist)
+def liststring_nstring():
+    lstringlist = [u'58', u'rhel58', u'rhel59']
+    return list(lstringlist)
 
 
-def nnumber():
-    nstringlist = [123, 456]
-    return list(nstringlist)
+def number_nnumber():
+    nnumberlist = [2, 4]
+    return list(nnumberlist)
+
+
+def string_domname(state=None):
+    if state is None:
+        alldom = subprocess.check_output(
+            ['virsh', 'list', '--all', '--name']).splitlines()
+    elif state == 'running':
+        alldom = subprocess.check_output(
+            ['virsh', 'list', '--state-running', '--name']).splitlines()
+    elif state == 'paused':
+        alldom = subprocess.check_output(
+            ['virsh', 'list', '--state-paused', '--name']).splitlines()
+    elif state == 'shutoff':
+        alldom = subprocess.check_output(
+            ['virsh', 'list', '--state-shutoff', '--name']).splitlines()
+    elif state == 'rop':
+        alldom = subprocess.check_output(
+            ['virsh', 'list', '--state-running', '--state-paused',
+             '--name']).splitlines()
+
+    domlist = [u'RHEL-7.2a.xml', u'RHEL-7.2b.xml', u'RHEL-7.2c.xml']
+    for line in alldom:
+        dmn = line.strip()
+        dmn.decode('utf-8')
+        if dmn:
+            domlist.append(dmn)
+    return domlist
+
+
+def string_domname_running():
+    return string_domname('running')
+
+
+def string_domname_paused():
+    return string_domname('paused')
+
+
+def string_domname_shutoff():
+    return string_domname('shutoff')
+
+
+def string_domname_rop():
+    return string_domname('rop')
+
+
+def liststring_domname():
+    return string_domname()
+
+
+def string_poolname(ina=False):
+    if ina:
+        allactpool = subprocess.check_output(
+            ['virsh', 'pool-list', '--inactive']).splitlines()
+    else:
+        allactpool = subprocess.check_output(
+            ['virsh', 'pool-list']).splitlines()
+    del allactpool[1]
+    del allactpool[0]
+
+    poollist = []
+    for line in allactpool:
+        pool = line.strip()
+        pool.decode('utf-8')
+        if pool:
+            i, _ = re.search(' +', pool).span()
+            pool = pool[:i]
+            poollist.append(pool)
+    return poollist
+
+
+def string_poolname_ina():
+    return string_poolname(True)
+
+
+def string_volname(pool=None):
+    poollist = []
+    vollist = []
+    if pool:
+        poollist.append(pool)
+    else:
+        poollist = string_poolname()
+
+    for pl in poollist:
+        allvol = subprocess.check_output(
+            ['virsh', 'vol-list', '--pool', pl]).splitlines()
+        del allvol[2]
+        del allvol[1]
+        del allvol[0]
+        for line in allvol:
+            vol = line.strip()
+            vol.decode('utf-8')
+            if vol:
+                _, i = re.search(' +', vol).span()
+                vol = vol[i:]
+                vollist.append(vol)
+    return vollist
+
+
+def stringtype(cmd, command, option):
+    otype = cmd['options'][option]['type']
+    if re.search('domname', otype):
+        if command in DOMAIN_RUNNING:
+            otype += '_running'
+        elif command in DOMAIN_PAUSED:
+            otype += '_paused'
+        elif command in DOMAIN_SHUTOFF:
+            otype += '_shutoff'
+        elif command in DOMAIN_RoP:
+            otype += '_rop'
+    elif re.search('volname', otype):
+        pass
+    elif re.search('poolname', otype):
+        if command in POOL_INA:
+            otype += '_ina'
+    elif re.search('network', otype):
+        pass
+    return otype
+
+
+def numbertype(cmd, command, option):
+    otype = cmd['options'][option]['type']
+    return otype
 
 
 def argtype(command, option):
     cmd = load_commands()[command]
-    strllist = []   # string list
-    nstrlist = []   # normal string
-    nnumlist = []   # normal number
-    boollist = []   # bool
-    xmllist = []    # *.xml
-    savelist = []   # *.save
-    dmlist = []     # domain name
-    timelist = []   # number of time
-    idlist = []     # normal string
-    coreslist = []  # cores number
-    bwlmtlist = []  # bandwidth limit
-    for opt in cmd['options'].keys():
-        if cmd['options'][opt]['type'] == 'string' and cmd['options'][opt]['argv']:
-            strllist.append(str(opt))
-        elif cmd['options'][opt]['type'] == 'string':
-            nstrlist.append(str(opt))
-        elif cmd['options'][opt]['type'] == 'number':
-            nnumlist.append(str(opt))
-        elif cmd['options'][opt]['type'] == 'bool':
-            boollist.append(str(opt))
-
-    if option is None:
-        raise Exception('Error option')
-    elif option in boollist:
-        return 'bool'
-    elif option in timelist:
-        return 'timetype'
-    elif option in idlist:
-        return 'idtype'
-    elif option in coreslist:
-        return 'corenotype'
-    elif option in bwlmtlist:
-        return 'bwtype'
-    elif option in xmllist:
-        return 'xmltype'
-    elif option in savelist:
-        return 'savetype'
-    elif option in dmlist:
-        return 'dmtype'
-    elif option in nstrlist:
-        return 'nstring'
-    elif option in nnumlist:
-        return 'nnumber'
-    elif option in strllist:
-        return 'stringlist'
+    if (re.match('string', cmd['options'][option]['type']) and
+       cmd['options'][option]['argv'] is True):
+        return cmd['options'][option]['type'].replace('string', 'liststring', 1)
+    elif re.match('bool', cmd['options'][option]['type']):
+        return cmd['options'][option]['type']
+    elif re.match('string', cmd['options'][option]['type']):
+        return stringtype(cmd, command, option)
+    elif re.match('number', cmd['options'][option]['type']):
+        return numbertype(cmd, command, option)
     else:
-        raise Exception('Unexpected cmd:' + command + ' Unexpected option:' + option)
+        raise Exception('Unexpected cmd:' + command +
+                        ' Unexpected option:' + option)
