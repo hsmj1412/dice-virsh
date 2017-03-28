@@ -11,7 +11,8 @@ def dir_prove():
     return wd
 
 
-def arg_generate(fp, sub, opts):
+def arg_generate(fp, sub, options):
+    opts = options[:]
     virsh_mod = sys.modules['dice-virsh_utils.virsh']
     temp = None
     poolarg = None
@@ -62,11 +63,17 @@ def arg_generate(fp, sub, opts):
 
         fp.write('- name: ' + temp + '\n')
         fp.write('  depends_on: ' + temp + '\n')
+        if poolarg is not None:
+            fp.write('  require: ' + poolarg + ' is SUCCESS\n')
         fp.write('  oracle: |' + '\n')
 
         fp.write('      if ' + temp + ' is String:' + '\n')
-        fp.write('          if ' + temp + ' in virsh.' + argtype + '(' + poolarg
-                 + '):' + '\n')
+        if poolarg is None:
+            fp.write('          if ' + temp + ' in virsh.' + argtype + '():' +
+                     '\n')
+        else:
+            fp.write('          if ' + temp + ' in virsh.' + argtype + '(' +
+                     poolarg + '):' + '\n')
         fp.write('              return SUCCESS()' + '\n')
         fp.write('          else:' + '\n')
         fp.write('              return FAIL()' + '\n')
@@ -78,6 +85,3 @@ def arg_build(sub, opts):
     wd = os.path.join(dir_prove(), 'args.yaml')
     with open(wd, 'a') as fp:
         arg_generate(fp, sub, opts)
-
-
-

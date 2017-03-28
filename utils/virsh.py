@@ -206,7 +206,7 @@ EXCLUSIVE_OPTIONS = {
 }
 
 DOMAIN_RUNNING = [
-    'shutoff', 'suspend', 'set-user-password', 'domtime'
+    'shutoff', 'suspend', 'set-user-password', 'domtime',
 ]
 
 DOMAIN_PAUSED = [
@@ -214,7 +214,7 @@ DOMAIN_PAUSED = [
 ]
 
 DOMAIN_SHUTOFF = [
-    'start', 'domrename', 'setmaxmem', 'setmem', 'setvcpus'
+    'start', 'domrename', 'setmaxmem', 'setmem', 'setvcpus',
 ]
 
 DOMAIN_RoP = [
@@ -225,7 +225,8 @@ DOMAIN_RoP = [
 ]
 
 POOL_INA = [
-    'pool-delete', 'pool-build', 'pool-undefine'
+    'pool-delete', 'pool-build', 'pool-undefine', 'migrate-compcache',
+    'migrate-setmaxdowntime',
 ]
 
 
@@ -249,7 +250,9 @@ def option_from_line(line):
     fp = open("/home/junli/test3", "a")
     print >> f, line
     if type_name == '<string>':
-        if re.search('domain name', line) or re.search('list of domain', line):
+        if (re.search('domain name', line)
+            or re.search('list of domain', line))\
+                and not re.search('new', line):
             print >> f, "domain_name"
             type_name = 'string_domname'
         elif re.search('domain', line) and re.search('uuid', line):
@@ -257,13 +260,13 @@ def option_from_line(line):
             type_name = 'string_nstring'
         elif re.search('pool name', line):
             print >> f, "pool_name"
-            type_name = 'string_nstring'
+            type_name = 'string_poolname'
         elif re.search('volume name', line) or re.search('vol name', line):
             print >> f, "volume_name"
-            type_name = 'string_nstring'
+            type_name = 'string_volname'
         elif re.search('network', line) and re.search('name', line):
             print >> f, 'network_name'
-            type_name = 'string_nstring'
+            type_name = 'string_netname'
         elif re.search('network', line) and re.search('uuid', line):
             print >> f, 'network_uuid'
             type_name = 'string_nstring'
@@ -408,10 +411,10 @@ def load_commands():
         return load_cmds_from_help(path=path)
 
 
-def commands(excludes=None):
-    excludes = ['qemu-monitor-event']
+def commands(excludes=[]):
+    excludes += ['qemu-monitor-event', 'pool-delete']
     cmds = load_commands().keys()
-    if excludes is None:
+    if len(excludes) == 0:
         return cmds
     else:
         return list(set(load_commands().keys()) - set(excludes))
@@ -453,6 +456,13 @@ def number_nnumber():
     return list(nnumberlist)
 
 
+def define_dom():
+    xmllist = []
+    assert len(xmllist) > 0
+    for xml in xmllist:
+        subprocess.call(['virsh', 'define', xml])
+
+
 def string_domname(state=None):
     if state is None:
         alldom = subprocess.check_output(
@@ -471,40 +481,86 @@ def string_domname(state=None):
             ['virsh', 'list', '--state-running', '--state-paused',
              '--name']).splitlines()
 
-    domlist = [u'RHEL-7.2a.xml', u'RHEL-7.2b.xml', u'RHEL-7.2c.xml']
+    domlist = []
     for line in alldom:
         dmn = line.strip()
-        dmn.decode('utf-8')
+        dmn = dmn.decode('utf-8')
         if dmn:
             domlist.append(dmn)
+    if len(domlist) == 0 and state is None:
+        define_dom()
+        domlist = string_domname()
     return domlist
 
 
-def string_domname_running():
-    return string_domname('running')
-
-
-def string_domname_paused():
-    return string_domname('paused')
+def destroy_dom():
+    domlist = string_domname()
+    for dom in domlist:
+        subprocess.call(['virsh', 'destroy', str(dom)])
 
 
 def string_domname_shutoff():
-    return string_domname('shutoff')
+    domlist = string_domname('shutoff')
+    if len(domlist) == 0:
+        destroy_dom()
+        domlist = string_domname_shutoff()
+    return domlist
+
+
+def start_dom():
+    domlist = string_domname_shutoff()
+    for dom in domlist:
+        subprocess.call(['virsh', 'start', str(dom)])
+
+
+def string_domname_running():
+    domlist = string_domname('running')
+    if len(domlist) == 0:
+        start_dom()
+        domlist = string_domname_running()
+    return domlist
+
+
+def suspend_dom():
+    domlist = string_domname_running()
+    for dom in domlist:
+        subprocess.call(['virsh', 'suspend', str(dom)])
+
+
+def string_domname_paused():
+    domlist = string_domname('paused')
+    if len(domlist) == 0:
+        suspend_dom()
+        domlist = string_domname_paused()
+    return domlist
 
 
 def string_domname_rop():
-    return string_domname('rop')
+    domlist = string_domname('rop')
+    if len(domlist) == 0:
+        domlist = string_domname_running()
+    return domlist
 
 
 def liststring_domname():
     return string_domname()
 
 
-def string_poolname(ina=False):
-    if ina:
+def define_pool():
+    xmllist = []
+    assert len(xmllist) > 0
+    for xml in xmllist:
+        subprocess.call(['virsh', 'pool-define', xml])
+
+
+def string_poolname(state=None):
+    if state is None:
+        allactpool = subprocess.check_output(
+            ['virsh', 'pool-list', '--all']).splitlines()
+    elif state == 'ina':
         allactpool = subprocess.check_output(
             ['virsh', 'pool-list', '--inactive']).splitlines()
-    else:
+    elif state == 'act':
         allactpool = subprocess.check_output(
             ['virsh', 'pool-list']).splitlines()
     del allactpool[1]
@@ -513,39 +569,137 @@ def string_poolname(ina=False):
     poollist = []
     for line in allactpool:
         pool = line.strip()
-        pool.decode('utf-8')
+        pool = pool.decode('utf-8')
         if pool:
             i, _ = re.search(' +', pool).span()
             pool = pool[:i]
             poollist.append(pool)
+
+    if len(poollist) == 0 and state is None:
+        define_pool()
+        poollist = string_poolname()
+
+    return poollist
+
+
+def ina_pool():
+    poollist = string_poolname()
+    for pool in poollist:
+        subprocess.call(['virsh', 'pool-destroy', str(pool)])
     return poollist
 
 
 def string_poolname_ina():
-    return string_poolname(True)
+    poollist = string_poolname('ina')
+    if len(poollist) == 0:
+        poollist = ina_pool()
+    return poollist
+
+
+def act_pool():
+    poollist = string_poolname_ina()
+    for pool in poollist:
+        subprocess.call(['virsh', 'pool-start', str(pool)])
+    return poollist
+
+
+def string_poolname_act():
+    poollist = string_poolname('act')
+    if len(poollist) == 0:
+        poollist = act_pool()
+    return poollist
+
+
+def define_net():
+    xmllist = []
+    assert len(xmllist) > 0
+    for xml in xmllist:
+        subprocess.call(['virsh', 'net-define', xml])
+
+
+def string_netname(state=None):
+    if state is None:
+        allactnet = subprocess.check_output(
+            ['virsh', 'net-list', '--all']).splitlines()
+    elif state == 'ina':
+        allactnet = subprocess.check_output(
+            ['virsh', 'net-list', '--inactive']).splitlines()
+    elif state == 'act':
+        allactnet = subprocess.check_output(
+            ['virsh', 'net-list']).splitlines()
+    del allactnet[1]
+    del allactnet[0]
+
+    netlist = []
+    for line in allactnet:
+        net = line.strip()
+        net = net.decode('utf-8')
+        if net:
+            i, _ = re.search(' +', net).span()
+            net = net[:i]
+            netlist.append(net)
+
+    if len(netlist) == 0 and state is None:
+        define_net()
+        netlist = string_netname()
+
+    return netlist
+
+
+def ina_net():
+    netlist = string_netname()
+    for net in netlist:
+        subprocess.call(['virsh', 'net-destroy', str(net)])
+    return netlist
+
+
+def string_netname_ina():
+    netlist = string_netname('ina')
+    if len(netlist) == 0:
+        netlist = ina_net()
+    return netlist
+
+
+def act_net():
+    netlist = string_netname_ina()
+    for net in netlist:
+        subprocess.call(['virsh', 'net-start', str(net)])
+    return netlist
+
+
+def string_netname_act():
+    netlist = string_netname('act')
+    if len(netlist) == 0:
+        netlist = act_net()
+    return netlist
 
 
 def string_volname(pool=None):
+    f = open('/home/junli/fuck', 'a')
+
     poollist = []
     vollist = []
     if pool:
         poollist.append(pool)
     else:
-        poollist = string_poolname()
+        poollist = string_poolname_act()
 
     for pl in poollist:
         allvol = subprocess.check_output(
-            ['virsh', 'vol-list', '--pool', pl]).splitlines()
-        del allvol[2]
+            ['virsh', 'vol-list', '--pool', str(pl)]).splitlines()
+        if len(allvol) > 2 and re.search('lost+found', allvol[2]):
+            del allvol[2]
         del allvol[1]
         del allvol[0]
         for line in allvol:
             vol = line.strip()
-            vol.decode('utf-8')
+            vol = vol.decode('utf-8')
             if vol:
-                _, i = re.search(' +', vol).span()
+                _, i = re.search(r' +', vol).span()
                 vol = vol[i:]
                 vollist.append(vol)
+    print >>f, vollist
+    f.close()
     return vollist
 
 
@@ -565,6 +719,8 @@ def stringtype(cmd, command, option):
     elif re.search('poolname', otype):
         if command in POOL_INA:
             otype += '_ina'
+        elif re.search('vol', command):
+            otype += '_act'
     elif re.search('network', otype):
         pass
     return otype
