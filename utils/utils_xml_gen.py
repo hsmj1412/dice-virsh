@@ -222,8 +222,9 @@ def load_rng(file_name, is_root=True):
     return nodetree if is_root else nodetree.getchildren()
 
 
-def node_overide(nodetree):
-    for element in load_rng('overides.xml', is_root=False):
+def node_overide(rng, nodetree):
+    fname = os.path.split(rng)[1] + '_overides.xml'
+    for element in load_rng(fname, is_root=False):
         name = element.get('name')
         node = nodetree.find('./define[@name="%s"]' % name)
         if node is not None:
