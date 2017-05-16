@@ -246,73 +246,50 @@ def option_from_line(line):
     if name.startswith('--'):
         name = name[2:]
 
-    f = open("/home/junli/test2", "a")
-    fp = open("/home/junli/test3", "a")
-    print >> f, line
     if type_name == '<string>':
         if (re.search('domain name', line)
             or re.search('list of domain', line))\
                 and not re.search('new', line):
-            print >> f, "domain_name"
             type_name = 'string_domname'
         elif re.search('domain', line) and re.search('uuid', line):
-            print >> f, "domain_uuid"
             type_name = 'string_nstring'
         elif re.search('pool name', line):
-            print >> f, "pool_name"
             type_name = 'string_poolname'
         elif re.search('volume name', line) or re.search('vol name', line):
-            print >> f, "volume_name"
             type_name = 'string_volname'
         elif re.search('network', line) and re.search('name', line):
-            print >> f, 'network_name'
             type_name = 'string_netname'
         elif re.search('network', line) and re.search('uuid', line):
-            print >> f, 'network_uuid'
             type_name = 'string_nstring'
         elif re.search('save', line):
-            print >> f, ".save"
             type_name = 'string_nstring'
         elif re.search('xml', line) or re.search('XML', line):
-            print >> f, "XML"
             type_name = 'string_nstring'
         elif re.search('command', line):
-            print >> f, "command"
             type_name = 'string_nstring'
         elif re.search('interface', line):
-            print >> f, "interface"
             type_name = 'string_nstring'
         elif re.search('virttype', line):
-            print >> f, "virttype"
             type_name = 'string_nstring'
         elif re.search('machine type', line):
-            print >> f, "machinetype"
             type_name = 'string_nstring'
         elif re.search('arch', line):
-            print >> f, "arch"
             type_name = 'string_nstring'
         elif re.search('emulator', line):
-            print >> f, 'emulator'
             type_name = 'string_nstring'
         elif re.search('new name', line) or re.search('clone name', line):
-            print >> f, 'name'
             type_name = 'string_nstring'
         elif re.search('secret UUID', line):
-            print >> f, 'sec_uuid'
             type_name = 'string_nstring'
         elif re.search('MAC', line):
-            print >> f, 'mac'
             type_name = 'string_nstring'
         else:
             type_name = 'string_nstring'
-            print >> fp, line
     elif type_name == '<number>':
         type_name = 'number_nnumber'
     else:
         type_name = 'bool'
     option['type'] = type_name
-    f.close()
-    fp.close()
 
     return name, option
 
@@ -643,6 +620,8 @@ def string_netname(state=None):
         define_net()
         netlist = string_netname()
 
+    if netlist[0] == 'default':
+            del netlist[0]
     return netlist
 
 
@@ -675,8 +654,6 @@ def string_netname_act():
 
 
 def string_volname(pool=None):
-    f = open('/home/junli/fuck', 'a')
-
     poollist = []
     vollist = []
     if pool:
@@ -698,9 +675,18 @@ def string_volname(pool=None):
                 _, i = re.search(r' +', vol).span()
                 vol = vol[i:]
                 vollist.append(vol)
-    print >>f, vollist
-    f.close()
     return vollist
+
+
+def string_xml(xmltype='dom'):
+    xmldir = xmltype + 'xml'
+    xmllist = []
+    dirlist = os.walk(xmldir)[2]
+    for fl in dirlist:
+        if re.search('.+\.xml', fl):
+            xmllist.append(fl)
+
+    return xmllist
 
 
 def stringtype(cmd, command, option):
@@ -722,6 +708,8 @@ def stringtype(cmd, command, option):
         elif re.search('vol', command):
             otype += '_act'
     elif re.search('network', otype):
+        pass
+    elif re.search('xml', otype):
         pass
     return otype
 
