@@ -230,6 +230,36 @@ POOL_INA = [
 ]
 
 
+XML_DOMAIN = [
+    'define',
+]
+
+
+XML_NET = [
+
+]
+
+
+XML_POOL = [
+
+]
+
+
+XML_VOL = [
+
+]
+
+
+XML_NETFLT = [
+
+]
+
+
+XML_IF = [
+
+]
+
+
 def option_from_line(line):
     option = {'required': False, 'argv': False}
     name, type_name, _ = [i.strip() for i in line.split(' ', 2)]
@@ -620,8 +650,8 @@ def string_netname(state=None):
         define_net()
         netlist = string_netname()
 
-    if netlist[0] == 'default':
-            del netlist[0]
+    if 'default' in netlist:
+            netlist.remove('default')
     return netlist
 
 
@@ -689,6 +719,27 @@ def string_xml(xmltype='dom'):
     return xmllist
 
 
+def string_xml_doumain_base():
+    return '/usr/share/libvirt/schemas/domain.rng'
+
+
+def cpu_list():
+    return re.findall('processor.+?:.+?(\d+)', open('/proc/cpuinfo', 'r').read())
+
+
+def cpu_count():
+    count = []
+    for i in range(1, len(cpu_list()) + 1):
+        count.append(i)
+    return count
+
+
+def memory():
+    mtt = eval(re.findall('MemTotal.*?:.+?(\d+)', open('/proc/meminfo', 'r').read())[0])/1024**2
+    memory_list = [x*2 for x in range(1, mtt+1)]
+    return memory_list
+
+
 def stringtype(cmd, command, option):
     otype = cmd['options'][option]['type']
     if re.search('domname', otype):
@@ -710,7 +761,18 @@ def stringtype(cmd, command, option):
     elif re.search('network', otype):
         pass
     elif re.search('xml', otype):
-        pass
+        if command in XML_DOMAIN:
+            otype += '_domain'
+        elif command in XML_NET:
+            otype += '_net'
+        elif command in XML_POOL:
+            otype += '_pool'
+        elif command in XML_VOL:
+            otype += '_vol'
+        elif command in XML_NETFLT:
+            otype += '_netflt'
+        elif command in XML_IF:
+            otype += '_if'
     return otype
 
 

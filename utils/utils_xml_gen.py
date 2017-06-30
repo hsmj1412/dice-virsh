@@ -280,7 +280,7 @@ class ProcessBase(object):
         if 'max_vcpu' in self.params:
             cnt = self.params['max_vcpu']
         else:
-            cnt = self.params['max_vcpu'] = utils_random.int_exp(1)
+            cnt = self.params['max_vcpu'] = len(re.findall('processor.+?:.+?(\d+)', open('/proc/cpuinfo', 'r').read()))
         return cnt
 
     def get_max_mem(self):
@@ -288,7 +288,9 @@ class ProcessBase(object):
             maxmem = self.params['maxmem']
             unit = self.params['maxmem_unit']
         else:
-            maxmem = utils_random.integer(1, 10000000)
+            maxmem = utils_random.integer(1024 ** 2, eval(
+                re.findall('MemTotal.*?:.+?(\d+)',
+                           open('/proc/meminfo', 'r').read())[0]) * 1024)
             unit = 'eib'
             while maxmem <= UNIT_MAP[unit]:
                 unit = random.choice(list(UNIT_MAP.keys()))

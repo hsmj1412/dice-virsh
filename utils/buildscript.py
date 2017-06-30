@@ -2,6 +2,8 @@ import sys
 import os
 import re
 
+DICE_SIGNATURE = 'JunLi'
+
 
 def dir_prove():
     wd = os.getcwd()
@@ -36,6 +38,13 @@ def arg_generate(fp, sub, options):
             fp.write('      if ' + opt + ' is Integer:' + '\n')
             fp.write('          if ' + opt + ' in virsh.' + argtype + '():' +
                      '\n')
+            fp.write('              return SUCCESS()' + '\n')
+            fp.write('          else:' + '\n')
+            fp.write('              return FAIL()' + '\n')
+        elif re.match('string_xml', argtype):
+            fp.write('      if ' + opt + ' is Xml:' + '\n')
+            fp.write('          if ' + opt + ' base virsh.' + argtype +
+                     '_base():' + '\n')
             fp.write('              return SUCCESS()' + '\n')
             fp.write('          else:' + '\n')
             fp.write('              return FAIL()' + '\n')
@@ -85,3 +94,40 @@ def arg_build(sub, opts):
     wd = os.path.join(dir_prove(), 'args.yaml')
     with open(wd, 'a') as fp:
         arg_generate(fp, sub, opts)
+
+
+def xmlarg_generate(fp=None, xmlreq=[]):
+    for nd in xmlreq:
+        fp.write('- name: ' + nd[0] + '\n')
+        fp.write('  depends_on: ' + nd[0] + '\n')
+        fp.write('  oracle: |' + '\n')
+        if nd[1] in CPU_COUNT:
+            fp.write('      if ' + nd[0] + ' is Integer:' + '\n')
+            fp.write('          if ' + nd[0] + ' in virsh.cpu_count():' +
+                     '\n')
+            fp.write('              return SUCCESS()' + '\n')
+            fp.write('          else:' + '\n')
+            fp.write('              return FAIL()' + '\n')
+        elif nd[1] in CPU_LIST:
+            fp.write('      if ' + nd[0] + ' is StringList:' + '\n')
+            fp.write('          if ' + nd[0] + ' in virsh.cpu_list():' +
+                     '\n')
+            fp.write('              return SUCCESS()' + '\n')
+            fp.write('          else:' + '\n')
+            fp.write('              return FAIL()' + '\n')
+        elif nd[1] in MEMORY:
+            fp.write('      if ' + nd[0] + ' is Integer:' + '\n')
+            fp.write('          if ' + nd[0] + ' in virsh.memory():' +
+                     '\n')
+            fp.write('              return SUCCESS()' + '\n')
+            fp.write('          else:' + '\n')
+            fp.write('              return FAIL()' + '\n')
+        fp.write('\n')
+
+
+def xml_complete(xmlfile):
+    xmlstr = open(xmlfile, 'r').read()
+    xmlreq = re.findall('"(' + DICE_SIGNATURE + '.+?_(.+?))"', xmlstr)
+    wd = os.path.join(dir_prove(), 'xmlargs.yaml')
+    with open(wd, 'a') as fp:
+        xmlarg_generate(fp, xmlreq)

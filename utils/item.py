@@ -2,22 +2,20 @@ from dice.core import item
 from dice import utils
 import re
 
+DICE_SIGNATURE = 'JunLi'
+
 
 class Item(item.ItemBase):
     def run(self):
         def replacexml(self, xml=None):
-            f = open(xml, 'r')
-            lines = f.readline()
-            f.close()
-            for line in lines:
-                ymlname = re.findall(r"'(yaml_.+)'", line)
-                if ymlname is not None:
-                    ymlvalue = self.get(ymlname)
-                    ymlvalue = utils.escape(str(ymlvalue))
-                    line = line.replace(ymlname, ymlvalue)
+            fs = open(xml, 'r').read()
+            xmlreq = re.findall('"(' + DICE_SIGNATURE + '.+?_.+?)"', fs)
+            for req in xmlreq:
+                if req is not None:
+                    reqvalue = utils.escape(str(self.get(req)))
+                    fs = fs.replace(req, reqvalue)
 
-            f = open(xml, 'w')
-            f.writelines(lines)
+            open(xml, 'w').write(fs)
 
         cmdline = 'virsh'
         cmd = utils.escape(str(self.get('subcmd')))
@@ -34,7 +32,7 @@ class Item(item.ItemBase):
                 if arg is None:
                     arg = ''
                 arg = utils.escape(str(arg))
-                if re.search('xmlname', arg):
+                if re.search('\.xml', arg):
                     replacexml(self, arg)
                 cmdline += ' %s' % arg
         f = open('runlog', 'a')
